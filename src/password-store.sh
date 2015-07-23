@@ -221,7 +221,7 @@ cmd_usage() {
 	        Selectively reencrypt existing passwords using new gpg-id.
 	    $PROGRAM [ls] [subfolder]
 	        List passwords.
-	    $PROGRAM find pass-names...
+	    $PROGRAM find [--fullpath,-f] pass-names...
 	    	List passwords that match pass-names.
 	    $PROGRAM [show] [--clip,-c] pass-name
 	        Show existing password and optionally put it on the clipboard.
@@ -331,10 +331,19 @@ cmd_show() {
 }
 
 cmd_find() {
-	[[ -z "$@" ]] && die "Usage: $PROGRAM $COMMAND pass-names..."
+	opts="$($GETOPT -o f -l fullpath -- "$@")"
+	local err=$?
+	eval set -- "$opts"
+	while true; do case $1 in
+		-f|--fullpath) OPT=-f; shift ;;
+		--) shift; break ;;
+	esac done
+
+	[[ $err -ne 0 || -z "$@" ]] && die "Usage: $PROGRAM $COMMAND [--fullpath,-f] pass-names..."
+
 	IFS="," eval 'echo "Search Terms: $*"'
 	local terms="*$(printf '%s*|*' "$@")"
-	tree -C -l --noreport -P "${terms%|*}" --prune --matchdirs --ignore-case "$PREFIX" | tail -n +2 | sed -E 's/\.gpg(\x1B\[[0-9]+m)?( ->|$)/\1\2/g'
+	tree -C -l --noreport $OPT -P "${terms%|*}" --prune --matchdirs --ignore-case "$PREFIX" | tail -n +2 | sed -E 's/\.gpg(\x1B\[[0-9]+m)?( ->|$)/\1\2/g' | sed 's#'$PREFIX/'##g'
 }
 
 cmd_grep() {
